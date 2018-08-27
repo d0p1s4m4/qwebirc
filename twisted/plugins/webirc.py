@@ -60,22 +60,22 @@ class QWebIRCServiceMaker(object):
     return s
 
 def get_ssl_factory_factory():
-  from twisted.internet.ssl import DefaultOpenSSLContextFactory
-  class ChainingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
-    def __init__(self, *args, **kwargs):
-      self.chain = None
-      if kwargs.has_key("certificateChainFile"):
-        self.chain = kwargs["certificateChainFile"]
-        del kwargs["certificateChainFile"]
+    from twisted.internet.ssl import DefaultOpenSSLContextFactory
+    class ChainingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
+        def __init__(self, *args, **kwargs):
+            self.chain = None
+            if kwargs.has_key("certificateChainFile"):
+                self.chain = kwargs["certificateChainFile"]
+                del kwargs["certificateChainFile"]
 
-      DefaultOpenSSLContextFactory.__init__(self, *args, **kwargs)
+            DefaultOpenSSLContextFactory.__init__(self, *args, **kwargs)
 
-    def cacheContext(self):
-      DefaultOpenSSLContextFactory.cacheContext(self)
-      if self.chain:
-        self._context.use_certificate_chain_file(self.chain)
-        self._context.use_privatekey_file(self.privateKeyFileName)
+        def cacheContext(self):
+            DefaultOpenSSLContextFactory.cacheContext(self)
+            if self.chain:
+                self._context.use_certificate_chain_file(self.chain)
+                self._context.use_privatekey_file(self.privateKeyFileName)
 
-  return ChainingOpenSSLContextFactory
+    return ChainingOpenSSLContextFactory
 
 serviceMaker = QWebIRCServiceMaker()
