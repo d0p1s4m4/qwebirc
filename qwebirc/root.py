@@ -1,91 +1,96 @@
 from twisted.protocols.policies import TimeoutMixin
-from twisted.web import resource, server, static, http
-from twisted.internet import error, reactor
+from twisted.web import resource, server, http
 import engines
 import mimetypes
-import config
 import sigdebug
+import config
 import re
 
+
 class RootResource(resource.Resource):
-  def getChild(self, name, request):
-    if name == "":
-      name = "qui.html"
-    return self.primaryChild.getChild(name, request)
+    def getChild(self, name, request):
+        if name == "":
+            name = "qui.html"
+        return self.primaryChild.getChild(name, request)
+
 
 class WrappedRequest(server.Request):
-  ip_re = re.compile(r"^((25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})|(::|(([a-fA-F0-9]{1,4}):){7}(([a-fA-F0-9]{1,4}))|(:(:([a-fA-F0-9]{1,4})){1,6})|((([a-fA-F0-9]{1,4}):){1,6}:)|((([a-fA-F0-9]{1,4}):)(:([a-fA-F0-9]{1,4})){1,6})|((([a-fA-F0-9]{1,4}):){2}(:([a-fA-F0-9]{1,4})){1,5})|((([a-fA-F0-9]{1,4}):){3}(:([a-fA-F0-9]{1,4})){1,4})|((([a-fA-F0-9]{1,4}):){4}(:([a-fA-F0-9]{1,4})){1,3})|((([a-fA-F0-9]{1,4}):){5}(:([a-fA-F0-9]{1,4})){1,2})))$", re.IGNORECASE)
-  def validIP(self, ip):
-    m = self.ip_re.match(ip)
-    if m is None:
-      return False
-    return True
-    
-  def _getClientIP(self):
-    # twisted.web.http.Request.getClientIP returns None if not IPv4;
-    # client.host has the real address
+    ip_re = re.compile(r"^((25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})[.](25[0-5]|2[0-4][0-9]|[0-1]?[0-9]{1,2})|(::|(([a-fA-F0-9]{1,4}):){7}(([a-fA-F0-9]{1,4}))|(:(:([a-fA-F0-9]{1,4})){1,6})|((([a-fA-F0-9]{1,4}):){1,6}:)|((([a-fA-F0-9]{1,4}):)(:([a-fA-F0-9]{1,4})){1,6})|((([a-fA-F0-9]{1,4}):){2}(:([a-fA-F0-9]{1,4})){1,5})|((([a-fA-F0-9]{1,4}):){3}(:([a-fA-F0-9]{1,4})){1,4})|((([a-fA-F0-9]{1,4}):){4}(:([a-fA-F0-9]{1,4})){1,3})|((([a-fA-F0-9]{1,4}):){5}(:([a-fA-F0-9]{1,4})){1,2})))$", re.IGNORECASE)
 
-    if not hasattr(self, "client") or not hasattr(self.client, "host"):
-        return None
+    def validIP(self, ip):
+        m = self.ip_re.match(ip)
+        if m is None:
+            return False
+        return True
 
-    real_ip = self.client.host
+    def _getClientIP(self):
+        # twisted.web.http.Request.getClientIP returns None if not IPv4;
+        # client.host has the real address
 
-    if real_ip[:7] == "::ffff:":
-      real_ip = real_ip[7:]
+        if not hasattr(self, "client") or not hasattr(self.client, "host"):
+                return None
 
-    if not hasattr(config, "FORWARDED_FOR_HEADER"):
-      return real_ip
+        real_ip = self.client.host
 
-    if real_ip not in config.FORWARDED_FOR_IPS:
-      return real_ip
-      
-    fake_ips = self.getHeader(config.FORWARDED_FOR_HEADER)
-    if fake_ips is None:
-      return real_ip
-      
-    fake_ip = fake_ips.split(",")[-1].strip()
-    if not self.validIP(fake_ip):
-      return real_ip
-      
-    return fake_ip
+        if real_ip[:7] == "::ffff:":
+            real_ip = real_ip[7:]
 
-  def getClientIP(self):
-    ip = self._getClientIP()
+        if not hasattr(config, "FORWARDED_FOR_HEADER"):
+            return real_ip
 
-    if ip is None:
-      return None
+        if real_ip not in config.FORWARDED_FOR_IPS:
+            return real_ip
 
-    # make absolutely sure that the address doesn't start with : before we
-    # try to use it as a string to the IRC server!
-    return ip.lstrip(":")
+        fake_ips = self.getHeader(config.FORWARDED_FOR_HEADER)
+        if fake_ips is None:
+            return real_ip
+
+        fake_ip = fake_ips.split(",")[-1].strip()
+        if not self.validIP(fake_ip):
+            return real_ip
+
+        return fake_ip
+
+    def getClientIP(self):
+        ip = self._getClientIP()
+
+        if ip is None:
+            return None
+
+        # make absolutely sure that the address doesn't start with : before we
+        # try to use it as a string to the IRC server!
+        return ip.lstrip(":")
+
 
 class HTTPChannel(http.HTTPChannel):
-  def timeoutConnection(self):
-    self.transport.abortConnection()
+    def timeoutConnection(self):
+        self.transport.abortConnection()
+
 
 class RootSite(server.Site):
-  protocol = HTTPChannel
+    protocol = HTTPChannel
 
-  requestFactory = WrappedRequest
+    requestFactory = WrappedRequest
 
-  def __init__(self, path, *args, **kwargs):
-    root = RootResource()
-    kwargs["timeout"] = config.HTTP_REQUEST_TIMEOUT
-    server.Site.__init__(self, root, *args, **kwargs)
-    services = {}
-    services["StaticEngine"] = root.primaryChild = engines.StaticEngine(path)
+    def __init__(self, path, *args, **kwargs):
+        root = RootResource()
+        kwargs["timeout"] = config.HTTP_REQUEST_TIMEOUT
+        server.Site.__init__(self, root, *args, **kwargs)
+        services = {}
+        services["StaticEngine"] = root.primaryChild = engines.StaticEngine(path)
 
-    def register(service, path, *args, **kwargs):
-      sobj = service("/" + path, *args, **kwargs)
-      services[service.__name__] = sobj
-      root.putChild(path, sobj)
-      
-    register(engines.AJAXEngine, "e")
-    try:
-      register(engines.WebSocketEngine, "w")
-    except AttributeError:
-      pass
-    register(engines.AuthgateEngine, "auth")
-    register(engines.AdminEngine, "adminengine", services)
-    
+        def register(service, path, *args, **kwargs):
+            sobj = service("/" + path, *args, **kwargs)
+            services[service.__name__] = sobj
+            root.putChild(path, sobj)
+
+        register(engines.AJAXEngine, "e")
+        try:
+            register(engines.WebSocketEngine, "w")
+        except AttributeError:
+            pass
+        register(engines.AuthgateEngine, "auth")
+        register(engines.AdminEngine, "adminengine", services)
+
+
 mimetypes.types_map[".ico"] = "image/vnd.microsoft.icon"

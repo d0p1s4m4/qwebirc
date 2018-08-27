@@ -14,111 +14,111 @@ import urllib
 from qwebirc.root import RootSite
 
 class Options(usage.Options):
-  optParameters = [["port", "p", "9090","Port to start the server on."],
-    ["ip", "i", "0.0.0.0", "IP address to listen on."],
-    ["logfile", "l", None, "Path to web CLF (Combined Log Format) log file."],
-    ["https", None, None, "Port to listen on for Secure HTTP."],
-    ["certificate", "c", "server.pem", "SSL certificate to use for HTTPS. "],
-    ["privkey", "k", "server.pem", "SSL certificate to use for HTTPS."],
-    ["certificate-chain", "C", None, "Chain SSL certificate"],
-    ["staticpath", "s", "static", "Path to static content"],
-    ["flashPort", None, None, "Port to listen on for flash policy connections."],
-  ]
+    optParameters = [["port", "p", "9090","Port to start the server on."],
+        ["ip", "i", "0.0.0.0", "IP address to listen on."],
+        ["logfile", "l", None, "Path to web CLF (Combined Log Format) log file."],
+        ["https", None, None, "Port to listen on for Secure HTTP."],
+        ["certificate", "c", "server.pem", "SSL certificate to use for HTTPS. "],
+        ["privkey", "k", "server.pem", "SSL certificate to use for HTTPS."],
+        ["certificate-chain", "C", None, "Chain SSL certificate"],
+        ["staticpath", "s", "static", "Path to static content"],
+        ["flashPort", None, None, "Port to listen on for flash policy connections."],
+    ]
 
-  optFlags = [["notracebacks", "n", "Display tracebacks in broken web pages. " +
-              "Displaying tracebacks to users may be security risk!"],
-             ]
+    optFlags = [["notracebacks", "n", "Display tracebacks in broken web pages. " +
+                            "Displaying tracebacks to users may be security risk!"],
+                         ]
 
-  def postOptions(self):
-    if self['https']:
-      try:
-        get_ssl_factory_factory()
-      except ImportError:
-        raise usage.UsageError("SSL support not installed")
+    def postOptions(self):
+        if self['https']:
+            try:
+                get_ssl_factory_factory()
+            except ImportError:
+                raise usage.UsageError("SSL support not installed")
 
 class FlashPolicyProtocol(protocol.Protocol, policies.TimeoutMixin):
-  def connectionMade(self):
-    self.setTimeout(5)
+    def connectionMade(self):
+        self.setTimeout(5)
 
-  def dataReceived(self, data):
-    if data == '<policy-file-request/>\0':
-      self.transport.write(self.factory.response_body)
-      self.transport.loseConnection()
-      return
-    elif self.factory.childProtocol:
-      self.setTimeout(None)
-      p = self.factory.childProtocol.buildProtocol(self.transport.client)
-      p.transport = self.transport
-      self.transport.protocol = p
-      p.connectionMade()
-      p.dataReceived(data)
-    else:
-      self.transport.loseConnection()
+    def dataReceived(self, data):
+        if data == '<policy-file-request/>\0':
+            self.transport.write(self.factory.response_body)
+            self.transport.loseConnection()
+            return
+        elif self.factory.childProtocol:
+            self.setTimeout(None)
+            p = self.factory.childProtocol.buildProtocol(self.transport.client)
+            p.transport = self.transport
+            self.transport.protocol = p
+            p.connectionMade()
+            p.dataReceived(data)
+        else:
+            self.transport.loseConnection()
 
 class FlashPolicyFactory(protocol.ServerFactory):
-  protocol = FlashPolicyProtocol
+    protocol = FlashPolicyProtocol
 
-  def __init__(self, childProtocol=None):
-    import config
-    base_url = urlparse.urlparse(config.BASE_URL)
-    port = base_url.port
-    if port is None:
-      if base_url.scheme == "http":
-        port = 80
-      elif base_url.scheme == "https":
-        port = 443
-      else:
-        raise Exception("Unknown scheme: " + base_url.scheme)
+    def __init__(self, childProtocol=None):
+        import config
+        base_url = urlparse.urlparse(config.BASE_URL)
+        port = base_url.port
+        if port is None:
+            if base_url.scheme == "http":
+                port = 80
+            elif base_url.scheme == "https":
+                port = 443
+            else:
+                raise Exception("Unknown scheme: " + base_url.scheme)
 
-    self.childProtocol = childProtocol
-    self.response_body = """<cross-domain-policy>
-    <allow-access-from domain="%s" to-ports="%d" />
+        self.childProtocol = childProtocol
+        self.response_body = """<cross-domain-policy>
+        <allow-access-from domain="%s" to-ports="%d" />
 </cross-domain-policy>""" % (urllib.quote(base_url.hostname), port) + '\0'
 
 class QWebIRCServiceMaker(object):
-  implements(IServiceMaker, IPlugin)
-  tapname = "qwebirc"
-  description = "QuakeNet web-based IRC client"
-  options = Options
-  
-  def makeService(self, config):
-    if config['logfile']:
-      site = RootSite(config['staticpath'], logPath=config['logfile'])
-    else:
-      site = RootSite(config['staticpath'])
+    implements(IServiceMaker, IPlugin)
+    tapname = "qwebirc"
+    description = "QuakeNet web-based IRC client"
+    options = Options
+    
+    def makeService(self, config):
+        if config['logfile']:
+            site = RootSite(config['staticpath'], logPath=config['logfile'])
+        else:
+            site = RootSite(config['staticpath'])
 
-    s = service.MultiService()
-    site.displayTracebacks = not config["notracebacks"]
-    if config['https']:
-      ssl_factory = get_ssl_factory_factory()
-      i = internet.SSLServer(int(config['https']), site, ssl_factory(config['privkey'], config['certificate'], certificateChainFile=config["certificate-chain"]), interface=config['ip'])
-    else:
-      i = internet.TCPServer(int(config['port']), FlashPolicyFactory(site), interface=config['ip'])
+        s = service.MultiService()
+        site.displayTracebacks = not config["notracebacks"]
+        if config['https']:
+            ssl_factory = get_ssl_factory_factory()
+            i = internet.SSLServer(int(config['https']), site, ssl_factory(config['privkey'], config['certificate'], certificateChainFile=config["certificate-chain"]), interface=config['ip'])
+        else:
+            i = internet.TCPServer(int(config['port']), FlashPolicyFactory(site), interface=config['ip'])
 
-    i.setServiceParent(s)
-    if config["flashPort"]:
-      f = internet.TCPServer(int(config['flashPort']), FlashPolicyFactory(), interface=config['ip'])
-      f.setServiceParent(s)
+        i.setServiceParent(s)
+        if config["flashPort"]:
+            f = internet.TCPServer(int(config['flashPort']), FlashPolicyFactory(), interface=config['ip'])
+            f.setServiceParent(s)
 
-    return s
+        return s
 
 def get_ssl_factory_factory():
-  from twisted.internet.ssl import DefaultOpenSSLContextFactory
-  class ChainingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
-    def __init__(self, *args, **kwargs):
-      self.chain = None
-      if kwargs.has_key("certificateChainFile"):
-        self.chain = kwargs["certificateChainFile"]
-        del kwargs["certificateChainFile"]
+    from twisted.internet.ssl import DefaultOpenSSLContextFactory
+    class ChainingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
+        def __init__(self, *args, **kwargs):
+            self.chain = None
+            if kwargs.has_key("certificateChainFile"):
+                self.chain = kwargs["certificateChainFile"]
+                del kwargs["certificateChainFile"]
 
-      DefaultOpenSSLContextFactory.__init__(self, *args, **kwargs)
+            DefaultOpenSSLContextFactory.__init__(self, *args, **kwargs)
 
-    def cacheContext(self):
-      DefaultOpenSSLContextFactory.cacheContext(self)
-      if self.chain:
-        self._context.use_certificate_chain_file(self.chain)
-        self._context.use_privatekey_file(self.privateKeyFileName)
+        def cacheContext(self):
+            DefaultOpenSSLContextFactory.cacheContext(self)
+            if self.chain:
+                self._context.use_certificate_chain_file(self.chain)
+                self._context.use_privatekey_file(self.privateKeyFileName)
 
-  return ChainingOpenSSLContextFactory
+    return ChainingOpenSSLContextFactory
 
 serviceMaker = QWebIRCServiceMaker()

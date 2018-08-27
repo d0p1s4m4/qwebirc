@@ -4,7 +4,7 @@ from staticengine import StaticEngine
 from authgateengine import AuthgateEngine
 
 try:
-  from ajaxengine import WebSocketEngine
+    from ajaxengine import WebSocketEngine
 except ImportError:
-  pass
+    pass
 
