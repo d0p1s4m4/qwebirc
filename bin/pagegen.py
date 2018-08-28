@@ -1,9 +1,9 @@
 import os
 import sys
-import pages
+from . import pages
 import subprocess
 import re
-import optionsgen
+from . import optionsgen
 import config
 
 
@@ -56,7 +56,7 @@ def _getgitid():
     data = p.communicate()[0]
     if p.wait() != 0:
         raise GitException("unable to get id")
-    return re.match("^([0-9a-f]+).*", data).group(1)
+    return re.match("^([0-9a-f]+).*", data.encode('utf-8')).group(1)
 
 
 GITID = None
@@ -79,14 +79,14 @@ def producehtml(name, debug):
     css = csslist(name, debug, gen=True)
     csshtml = "\n".join("    <link rel=\"stylesheet\" href=\"%s%s\" type=\"text/css\"/>" % (config.STATIC_BASE_URL, x) for x in css)
 
-    def toscript(url, digest):
+    def toscript(url, digest=None):
         if digest:
             subresource_int = " integrity=\"%s\" crossorigin=\"anonymous\"" % digest
         else:
             subresource_int = ""
         return "    <script type=\"text/javascript\" src=\"%s%s\"%s></script>" % ("" if url.startswith("//") else config.STATIC_BASE_URL, url, subresource_int)
 
-    jshtml = "\n".join(toscript(x) for x in js)
+    jshtml = "\n".join(toscript(*x) for x in js)
 
     if hasattr(config, "ANALYTICS_HTML"):
         jshtml += "\n" + config.ANALYTICS_HTML
@@ -127,13 +127,13 @@ def main(outputdir=".", produce_debug=True):
         if produce_debug:
             f = open(os.path.join(p, "%sdebug.html" % x), "wb")
             try:
-                f.write(producehtml(x, debug=True))
+                f.write(producehtml(x, debug=True).encode('utf-8'))
             finally:
                 f.close()
 
         f = open(os.path.join(p, "%s.html" % x), "wb")
         try:
-            f.write(producehtml(x, debug=False))
+            f.write(producehtml(x, debug=False).encode('utf-8'))
         finally:
             f.close()
 

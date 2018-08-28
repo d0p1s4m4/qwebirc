@@ -1,7 +1,6 @@
 from twisted.web import resource, server
 from twisted.internet import reactor, error
-from authgateengine import getSessionData
-import md5
+from .authgateengine import getSessionData
 import sys
 import os
 import time
@@ -10,7 +9,7 @@ import qwebirc.config_options as config_options
 import traceback
 import socket
 import qwebirc.ircclient as ircclient
-from adminengine import AdminEngineAction
+from .adminengine import AdminEngineAction
 from qwebirc.util import HitCounter
 import qwebirc.dns as qdns
 import qwebirc.util.qjson as json
