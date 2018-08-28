@@ -1,6 +1,7 @@
 import config
 import qwebirc.util.qjson as json
 
+
 def get_options():
     options = dict(
         networkName=config.NETWORK_NAME,
@@ -14,7 +15,7 @@ def get_options():
         validateNickname=False,
         customMenuItems=[]
     )
-    
+
     if hasattr(config, "NICKNAME_VALIDATE") and config.NICKNAME_VALIDATE:
         options["nickValidation"] = dict(
             minLen=config.NICKNAME_MINIMUM_LENGTH,

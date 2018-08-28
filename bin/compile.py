@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import dependencies
 dependencies.vcheck()
-
 import pages
 import os
 import subprocess
@@ -9,6 +8,7 @@ import pagegen
 import shutil
 import sys
 import time
+
 
 COPYRIGHT = open("js/copyright.js", "rb").read()
 
@@ -29,7 +29,9 @@ def jarit(src):
         raise MinifyException("an error occured")
     return data
 
+
 JAVA_WARNING_SURPRESSED = False
+
 
 def jmerge_files(prefix, suffix, output, files, *args, **kwargs):
     global COPYRIGHT
@@ -54,7 +56,7 @@ def jmerge_files(prefix, suffix, output, files, *args, **kwargs):
     try:
         os.unlink(o)
     except:
-        time.sleep(1) # windows sucks
+        time.sleep(1)  # windows sucks
         os.unlink(o)
 
     f = open(os.path.join(prefix, "static", suffix, output), "wb")
@@ -66,6 +68,7 @@ def jmerge_files(prefix, suffix, output, files, *args, **kwargs):
     f.write(compiled)
     f.close()
 
+
 def merge_files(output, files, root_path=lambda x: x):
     f = open(output, "wb")
 
@@ -76,6 +79,7 @@ def merge_files(output, files, root_path=lambda x: x):
         f.write(f2.read() + "\n")
         f2.close()
     f.close()
+
 
 def main(outputdir=".", produce_debug=True):
     ID = pagegen.getgitid()
@@ -124,6 +128,7 @@ def main(outputdir=".", produce_debug=True):
     f = open(".compiled", "w")
     f.close()
 
+
 def has_compiled():
     try:
         f = open(".compiled", "r")
@@ -141,12 +146,14 @@ def has_compiled():
 
     return False
 
+
 def vcheck():
     if has_compiled():
         return
 
     print("error: not yet compiled, run compile.py first.", file=sys.stderr)
     sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

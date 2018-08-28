@@ -1,17 +1,25 @@
-import os, sys, pages, subprocess, re, optionsgen, config
+import os
+import sys
+import pages
+import subprocess
+import re
+import optionsgen
+import config
+
 
 class GitException(Exception):
     pass
-    
+
+
 def jslist(name, debug):
     ui = pages.UIs[name]
     if debug:
         x = [pages.JS_DEBUG_BASE, ui.get("extra", []), pages.DEBUG, ["debug/ui/frontends/%s" % y for y in ui["uifiles"]]]
         gitid = ""
     else:
-        #x = [pages.JS_BASE, ui.get("buildextra", ui.get("extra", [])), pages.BUILD_BASE, name]
+        #  x = [pages.JS_BASE, ui.get("buildextra", ui.get("extra", [])), pages.BUILD_BASE, name]
         x = [pages.JS_RAW_BASE, name]
-        gitid = "-" + getgitid()    
+        gitid = "-" + getgitid()
 
     l = []
     for url in pages.flatten(x):
@@ -22,6 +30,7 @@ def jslist(name, debug):
         l.append((url if url.startswith("//") else "js/%s%s.js" % (url, gitid), digest))
     return l
 
+
 def csslist(name, debug, gen=False):
     ui = pages.UIs[name]
     nocss = ui.get("nocss")
@@ -29,43 +38,48 @@ def csslist(name, debug, gen=False):
         return ["css/%s-%s.css" % (name, getgitid())]
     css = list(pages.flatten([ui.get("extracss", []), "colours", "dialogs"]))
     if not nocss:
-        css+=[name]
+        css += [name]
     css = ["%s.css" % x for x in css]
     if hasattr(config, "CUSTOM_CSS"):
-        css+=[config.CUSTOM_CSS]
+        css += [config.CUSTOM_CSS]
     return list("css/%s%s" % ("debug/" if gen else "", x) for x in css)
+
 
 def _getgitid():
     try:
         p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, shell=os.name == "nt")
-    except Exception, e:
+    except Exception as e:
         if hasattr(e, "errno") and e.errno == 2:
-            raise GitException, "unable to execute"
-        raise GitException, "unknown exception running git: %s" % repr(e)
-        
+            raise GitException("unable to execute")
+        raise GitException("unknown exception running git: %s" % repr(e))
+
     data = p.communicate()[0]
     if p.wait() != 0:
-        raise GitException, "unable to get id"
+        raise GitException("unable to get id")
     return re.match("^([0-9a-f]+).*", data).group(1)
 
+
 GITID = None
+
+
 def getgitid():
     global GITID
     if GITID is None:
         try:
-            GITID =    _getgitid()
-        except GitException, e:
-            print >>sys.stderr, "warning: git: %s (using a random id)." % e
+            GITID = _getgitid()
+        except GitException as e:
+            print("warning: git: %s (using a random id)." % e, file=sys.stderr)
             GITID = os.urandom(10).encode("hex")
     return GITID
-        
+
+
 def producehtml(name, debug):
     ui = pages.UIs[name]
     js = jslist(name, debug)
     css = csslist(name, debug, gen=True)
     csshtml = "\n".join("    <link rel=\"stylesheet\" href=\"%s%s\" type=\"text/css\"/>" % (config.STATIC_BASE_URL, x) for x in css)
 
-    def toscript((url, digest)):
+    def toscript(url, digest):
         if digest:
             subresource_int = " integrity=\"%s\" crossorigin=\"anonymous\"" % digest
         else:
@@ -75,7 +89,7 @@ def producehtml(name, debug):
     jshtml = "\n".join(toscript(x) for x in js)
 
     if hasattr(config, "ANALYTICS_HTML"):
-        jshtml+="\n" + config.ANALYTICS_HTML
+        jshtml += "\n" + config.ANALYTICS_HTML
 
     div = ui.get("div", "")
     customjs = ui.get("customjs", "")
@@ -106,6 +120,7 @@ def producehtml(name, debug):
 </html>
 """ % (ui["doctype"], config.APP_TITLE, config.STATIC_BASE_URL, config.STATIC_BASE_URL, csshtml, debug and "true" or "false", customjs, jshtml, ui["class"], optionsgen.get_options(), div)
 
+
 def main(outputdir=".", produce_debug=True):
     p = os.path.join(outputdir, "static")
     for x in pages.UIs:
@@ -115,13 +130,13 @@ def main(outputdir=".", produce_debug=True):
                 f.write(producehtml(x, debug=True))
             finally:
                 f.close()
-            
+
         f = open(os.path.join(p, "%s.html" % x), "wb")
         try:
             f.write(producehtml(x, debug=False))
         finally:
             f.close()
 
+
 if __name__ == "__main__":
     main()
-    

@@ -1,4 +1,3 @@
-from twisted.protocols.policies import TimeoutMixin
 from twisted.web import resource, server, http
 import engines
 import mimetypes
