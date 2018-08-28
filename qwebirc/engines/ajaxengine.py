@@ -1,61 +1,75 @@
-from twisted.web import resource, server, static, error as http_error
-from twisted.names import client
+from twisted.web import resource, server
 from twisted.internet import reactor, error
-from authgateengine import login_optional, getSessionData
-import md5, sys, os, time, config, qwebirc.config_options as config_options, traceback, socket
+from authgateengine import getSessionData
+import md5
+import sys
+import os
+import time
+import config
+import qwebirc.config_options as config_options
+import traceback
+import socket
 import qwebirc.ircclient as ircclient
 from adminengine import AdminEngineAction
 from qwebirc.util import HitCounter
 import qwebirc.dns as qdns
 import qwebirc.util.qjson as json
-import urlparse
 import qwebirc.util.autobahn_check as autobahn_check
 
 TRANSPORTS = ["longpoll"]
 
 has_websocket = False
 autobahn_status = autobahn_check.check()
-if autobahn_status == True:
+if autobahn_status is True:
     import autobahn
     import autobahn.twisted.websocket
     import autobahn.twisted.resource
     has_websocket = True
     TRANSPORTS.append("websocket")
-elif autobahn_status == False:
+elif not autobahn_status:
     # they've been warned already
     pass
 else:
-    print >>sys.stderr, "WARNING:"
-    print >>sys.stderr, "    %s" % autobahn_status
-    print >>sys.stderr, "    as a result websocket support is disabled."
-    print >>sys.stderr, "    upgrade your version of autobahn from http://autobahn.ws/python/getstarted/"
+    print("WARNING:", file=sys.stderr)
+    print("    %s" % autobahn_status, file=sys.stderr)
+    print("    as a result websocket support is disabled.", file=sys.stderr)
+    print("    upgrade your version of autobahn from http://autobahn.ws/python/getstarted/", file=sys.stderr)
+
 
 BAD_SESSION_MESSAGE = "Invalid session, this most likely means the server has restarted; close this dialog and then try refreshing the page."
 MAX_SEQNO = 9223372036854775807    # 2**63 - 1... yeah it doesn't wrap
 Sessions = {}
 
+
 def get_session_id():
     return md5.md5(os.urandom(16)).hexdigest()
+
 
 class BufferOverflowException(Exception):
     pass
 
+
 class AJAXException(Exception):
     pass
-    
+
+
 class IDGenerationException(Exception):
     pass
+
 
 class LineTooLongException(Exception):
     pass
 
+
 EMPTY_JSON_LIST = json.dumps([])
+
 
 def cleanupSession(id):
     try:
         del Sessions[id]
     except KeyError:
         pass
+
 
 class IRCSession:
     def __init__(self, id):
@@ -102,12 +116,12 @@ class IRCSession:
     def flush(self, scheduled=False):
         if scheduled:
             self.schedule = None
-            
+
         if not self.buffer or not self.subscriptions:
             return
-                
+
         t = time.time()
-        
+
         if t < self.throttle:
             if not self.schedule:
                 self.schedule = reactor.callLater(self.throttle - t, self.flush, True)
@@ -123,7 +137,7 @@ class IRCSession:
 
         encdata = json.dumps(self.buffer)
         self.old_buffer = (self.subSeqNo, encdata)
-        self.subSeqNo+=1
+        self.subSeqNo += 1
         self.buffer = []
         self.buflen = 0
 
@@ -147,7 +161,7 @@ class IRCSession:
         self.buffer.append(data)
         self.buflen = newbuflen
         self.flush()
-        
+
     def push(self, data, seq_no=None):
         if self.closed:
             return
@@ -168,9 +182,11 @@ class IRCSession:
 
         reactor.callLater(5, cleanupSession, self.id)
 
+
 # DANGER! Breach of encapsulation!
 def connect_notice(line):
     return "c", "NOTICE", "", ("AUTH", "*** (qwebirc) %s" % line)
+
 
 class RequestChannel(object):
     def __init__(self, request):
@@ -181,18 +197,19 @@ class RequestChannel(object):
         self.request.write(data)
         self.request.finish()
         return False
-        
+
     def close(self):
         self.request.finish()
-        
+
+
 class AJAXEngine(resource.Resource):
     isLeaf = True
-    
+
     def __init__(self, prefix):
         self.prefix = prefix
         self.__connect_hit = HitCounter()
         self.__total_hit = HitCounter()
-        
+
     def render_POST(self, request):
         path = request.path[len(self.prefix):]
         if path[0] == "/":
@@ -200,25 +217,23 @@ class AJAXEngine(resource.Resource):
             if handler is not None:
                 try:
                     return handler(self, request)
-                except AJAXException, e:
+                except AJAXException as e:
                     return json.dumps((False, e[0]))
 
-        return "404" ## TODO: tidy up
+        return "404"  # TODO: tidy up
 
     def newConnection(self, request):
-        ticket = login_optional(request)
-        
         ip = request.getClientIP()
 
         nick = request.args.get("nick")
         if not nick:
-            raise AJAXException, "Nickname not supplied."
+            raise AJAXException("Nickname not supplied.")
         nick = ircclient.irc_decode(nick[0])
 
         password = request.args.get("password")
         if password is not None:
             password = ircclient.irc_decode(password[0])
-            
+
         for i in range(10):
             id = get_session_id()
             if not Sessions.get(id):
@@ -237,7 +252,7 @@ class AJAXEngine(resource.Resource):
             perform = ["PRIVMSG %s :TICKETAUTH %s" % (msg_mask, qticket)]
 
         ident, realname = config.IDENT, config.REALNAME
-        if ident is config_options.IDENT_HEX or ident is None: # latter is legacy
+        if ident is config_options.IDENT_HEX or ident is None:  # latter is legacy
             ident = socket.inet_aton(ip).encode("hex")
         elif ident is config_options.IDENT_NICKNAME:
             ident = nick
@@ -248,7 +263,7 @@ class AJAXEngine(resource.Resource):
             kwargs = dict(nick=nick, ident=ident, ip=ip, realname=realname, perform=perform, hostname=hostname)
             if password is not None:
                 kwargs["password"] = password
-                
+
             client = ircclient.createIRC(session, **kwargs)
             session.client = client
 
@@ -257,30 +272,32 @@ class AJAXEngine(resource.Resource):
         elif config.WEBIRC_MODE != "hmac":
             notice = lambda x: session.event(connect_notice(x))
             notice("Looking up your hostname...")
+
             def callback(hostname):
                 notice("Found your hostname.")
                 proceed(hostname)
+
             def errback(failure):
                 notice("Couldn't look up your hostname!")
                 proceed(ip)
             qdns.lookupAndVerifyPTR(ip, timeout=[config.DNS_TIMEOUT]).addCallbacks(callback, errback)
 
         Sessions[id] = session
-        
+
         return json.dumps((True, id, TRANSPORTS))
 
     def getSession(self, request):
         bad_session_message = "Invalid session, this most likely means the server has restarted; close this dialog and then try refreshing the page."
-        
+
         sessionid = request.args.get("s")
         if sessionid is None:
-            raise AJAXException, bad_session_message
-            
+            raise AJAXException(bad_session_message)
+
         session = Sessions.get(sessionid[0])
         if not session:
-            raise AJAXException, bad_session_message
+            raise AJAXException(bad_session_message)
         return session
-        
+
     def subscribe(self, request):
         request.channel.setTimeout(None)
 
@@ -295,11 +312,12 @@ class AJAXEngine(resource.Resource):
                 if seq_no < 0 or seq_no > MAX_SEQNO:
                     raise ValueError
         except ValueError:
-            raise AJAXEngine, "Bad sequence number"
+            raise AJAXEngine("Bad sequence number")
 
         session.subscribe(channel, seq_no)
 
         timeout_entry = reactor.callLater(config.HTTP_AJAX_REQUEST_TIMEOUT, session.timeout, channel)
+
         def cancel_timeout(result):
             try:
                 timeout_entry.cancel()
@@ -312,7 +330,7 @@ class AJAXEngine(resource.Resource):
     def push(self, request):
         command = request.args.get("c")
         if command is None:
-            raise AJAXException, "No command specified."
+            raise AJAXException("No command specified.")
         self.__total_hit()
 
         seq_no = request.args.get("n")
@@ -327,22 +345,22 @@ class AJAXEngine(resource.Resource):
         session = self.getSession(request)
         try:
             session.push(ircclient.irc_decode(command[0]), seq_no)
-        except AttributeError: # occurs when we haven't noticed an error
+        except AttributeError:  # occurs when we haven't noticed an error
             session.disconnect()
-            raise AJAXException, "Connection closed by server; try reconnecting by reloading the page."
-        except Exception, e: # catch all
-            session.disconnect()                
+            raise AJAXException("Connection closed by server; try reconnecting by reloading the page.")
+        except Exception as e:  # catch all
+            session.disconnect()
             traceback.print_exc(file=sys.stderr)
-            raise AJAXException, "Unknown error."
-    
+            raise AJAXException("Unknown error.")
+
         return json.dumps((True, True))
-    
+
     def closeById(self, k):
         s = Sessions.get(k)
         if s is None:
             return
         s.client.client.error("Closed by admin interface")
-        
+
     @property
     def adminEngine(self):
         return {
@@ -350,9 +368,10 @@ class AJAXEngine(resource.Resource):
             "Connections": [(self.__connect_hit,)],
             "Total hits": [(self.__total_hit,)],
         }
-        
+
     COMMANDS = dict(p=push, n=newConnection, s=subscribe)
-    
+
+
 if has_websocket:
     class WebSocketChannel(object):
         def __init__(self, channel):
@@ -446,7 +465,7 @@ if has_websocket:
         def close(self, reason=None):
             self.__cancelTimeout()
             if reason:
-                self.sendClose(4999, unicode(reason))
+                self.sendClose(4999, reason)
             else:
                 self.sendClose(4998)
 
@@ -469,4 +488,3 @@ if has_websocket:
         factory.setProtocolOptions(maxMessagePayloadSize=512, maxFramePayloadSize=512, tcpNoDelay=False)
         resource = WebSocketResource(factory)
         return resource
-

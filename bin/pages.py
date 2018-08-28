@@ -16,10 +16,11 @@ UIs = {
         "class": "QUI",
         "nocss": True,
         "uifiles": ["qui"],
-        "doctype": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"" + "\n" \
-            "    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+        "doctype": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"" + "\n" +
+        "    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
     }
 }
+
 
 def flatten(y):
     for x in y:
@@ -28,6 +29,7 @@ def flatten(y):
                 yield x
         else:
             yield x
+
 
 DEBUG_BASE = list(flatten(DEBUG_BASE))
 DEBUG = ["debug/%s" % x for x in DEBUG_BASE]

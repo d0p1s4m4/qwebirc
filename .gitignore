@@ -29,3 +29,4 @@ run.sh
 *.iml
 .virtualenv
 .vscode
+__pycache__
