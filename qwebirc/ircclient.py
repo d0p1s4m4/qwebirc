@@ -26,7 +26,7 @@ def hmacfn(*args):
     return h.hexdigest()
 
 
-def utf8_iso8859_1(data, table=dict((x, x.decode("iso-8859-1")) for x in map(chr, range(0, 256)))):
+def utf8_iso8859_1(data, table=dict((x, bytes(x, "iso-8859-1").decode("iso-8859-1")) for x in map(chr, range(0, 256)))):
     return (table.get(data.object[data.start]), data.start+1)
 
 

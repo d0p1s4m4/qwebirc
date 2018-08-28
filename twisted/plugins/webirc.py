@@ -2,16 +2,16 @@ from zope.interface import implements
 
 from twisted.python import usage
 
-from twisted.internet import task, protocol
-from twisted.protocols import basic, policies
+from twisted.internet import protocol
+from twisted.protocols import policies
 from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker
-from twisted.application import internet, strports, service
-from twisted.web import static, server
-import urlparse
+from twisted.application import internet, service
+from urllib.parse import urlparse
 import urllib
 
 from qwebirc.root import RootSite
+
 
 class Options(usage.Options):
     optParameters = [["port", "p", "9090","Port to start the server on."],
@@ -36,6 +36,7 @@ class Options(usage.Options):
             except ImportError:
                 raise usage.UsageError("SSL support not installed")
 
+
 class FlashPolicyProtocol(protocol.Protocol, policies.TimeoutMixin):
     def connectionMade(self):
         self.setTimeout(5)
@@ -54,6 +55,7 @@ class FlashPolicyProtocol(protocol.Protocol, policies.TimeoutMixin):
             p.dataReceived(data)
         else:
             self.transport.loseConnection()
+
 
 class FlashPolicyFactory(protocol.ServerFactory):
     protocol = FlashPolicyProtocol
@@ -75,12 +77,13 @@ class FlashPolicyFactory(protocol.ServerFactory):
         <allow-access-from domain="%s" to-ports="%d" />
 </cross-domain-policy>""" % (urllib.quote(base_url.hostname), port) + '\0'
 
+
 class QWebIRCServiceMaker(object):
     implements(IServiceMaker, IPlugin)
     tapname = "qwebirc"
     description = "QuakeNet web-based IRC client"
     options = Options
-    
+
     def makeService(self, config):
         if config['logfile']:
             site = RootSite(config['staticpath'], logPath=config['logfile'])
@@ -102,6 +105,7 @@ class QWebIRCServiceMaker(object):
 
         return s
 
+
 def get_ssl_factory_factory():
     from twisted.internet.ssl import DefaultOpenSSLContextFactory
     class ChainingOpenSSLContextFactory(DefaultOpenSSLContextFactory):
@@ -120,5 +124,6 @@ def get_ssl_factory_factory():
                 self._context.use_privatekey_file(self.privateKeyFileName)
 
     return ChainingOpenSSLContextFactory
+
 
 serviceMaker = QWebIRCServiceMaker()

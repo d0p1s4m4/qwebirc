@@ -1,6 +1,6 @@
 from twisted.web import resource, server, static
 import config
-import urlparse
+from urllib.parse import urlparse
 import urllib
 import hashlib
 import re
@@ -64,7 +64,7 @@ class AuthgateEngine(resource.Resource):
         return dict(Logins=((self.__hit,),))
 
 
-def decodeQTicket(qticket, p=re.compile("\x00*$"), cipher=qwebirc.util.rijndael.rijndael(hashlib.sha256(config.QTICKETKEY).digest()[:16])):
+def decodeQTicket(qticket, p=re.compile("\x00*$"), cipher=qwebirc.util.rijndael.rijndael(hashlib.sha256(config.QTICKETKEY.encode('utf-8')).digest()[:16])):
     def decrypt(data):
         l = len(data)
         if l < BLOCK_SIZE * 2 or l % BLOCK_SIZE != 0:

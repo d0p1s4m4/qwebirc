@@ -154,5 +154,5 @@ def check_autobahn():
 
 
 if __name__ == "__main__":
-    import dependencies
+    from . import dependencies
     dependencies.check_dependencies()

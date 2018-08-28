@@ -13,7 +13,7 @@ def check_dependencies():
         fail("qwebirc requires python 3.5, you have: %s, install python 3.6.X:\nhttp://www.python.org/download/" % ".".join(map(str, sys.version_info[:3])))
 
     # this is done so we can use Python 2.5 syntax...
-    import dependencies_b
+    from . import dependencies_b
     dependencies_b.check_dependencies()
 
 

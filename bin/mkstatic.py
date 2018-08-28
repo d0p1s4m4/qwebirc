@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import compile
-import pages
+from . import pages
 import sys
 import os
 import shutil

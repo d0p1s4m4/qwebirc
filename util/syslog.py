@@ -11,12 +11,13 @@ IDENT = "syslog"
 
 protocol, opened = None, False
 
+
 class __SyslogProtocol(DatagramProtocol):
     def __init__(self):
-        self.pid = os.getpid() # FORK WARNING
+        self.pid = os.getpid()  # FORK WARNING
 
     def send(self, data):
-        if self.transport is None: # oh well, it's UDP =)
+        if self.transport is None:  # oh well, it's UDP =)
             return
         self.transport.write("<1> %s[%d]: %s\n" % (self.ident, self.pid, data), ADDR)
 
@@ -24,6 +25,7 @@ class __SyslogProtocol(DatagramProtocol):
         if self.transport is None:
             return
         self.transport.stopListening()
+
 
 def __open_protocol():
     global opened
@@ -35,6 +37,7 @@ def __open_protocol():
     from twisted.internet import reactor
     reactor.listenUDP(0, protocol)
 
+
 def __build_protocol(ident=IDENT):
     global protocol
 
@@ -44,13 +47,16 @@ def __build_protocol(ident=IDENT):
     protocol = __SyslogProtocol()
     protocol.ident = ident
 
+
 def syslog(data):
     __build_protocol()
     __open_protocol()
     protocol.send(data)
 
+
 def openlog(ident, logopt=None, facility=None):
     __build_protocol(ident)
+
 
 def closelog():
     global protocol, opened
@@ -62,8 +68,10 @@ def closelog():
     protocol.close()
     protocol = None
 
+
 def setlogmask(maskpri):
     pass
+
 
 if __name__ == "__main__":
     from twisted.internet import reactor

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import dependencies
+from . import dependencies
 dependencies.vcheck()
-import pages
+from . import pages
 import os
 import subprocess
-import pagegen
+from . import pagegen
 import shutil
 import sys
 import time
@@ -63,7 +63,7 @@ def jmerge_files(prefix, suffix, output, files, *args, **kwargs):
     f.write(COPYRIGHT)
 
     if kwargs.get("file_prefix"):
-        f.write(kwargs.get("file_prefix"))
+        f.write(kwargs.get("file_prefix").encode('utf-8'))
 
     f.write(compiled)
     f.close()
@@ -76,7 +76,7 @@ def merge_files(output, files, root_path=lambda x: x):
         if x.startswith("//"):
             continue
         f2 = open(root_path(x), "rb")
-        f.write(f2.read() + "\n")
+        f.write(f2.read() + b"\n")
         f2.close()
     f.close()
 

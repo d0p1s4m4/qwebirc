@@ -1,7 +1,7 @@
 from twisted.web import resource, server, http
-import engines
+from . import engines
 import mimetypes
-import sigdebug
+from . import sigdebug
 import config
 import re
 
