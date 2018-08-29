@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import config
+import hashlib
 import qwebirc.config_options as config_options
 import traceback
 import socket
@@ -41,7 +42,7 @@ Sessions = {}
 
 
 def get_session_id():
-    return md5.md5(os.urandom(16)).hexdigest()
+    return hashlib.md5(os.urandom(16)).hexdigest()
 
 
 class BufferOverflowException(Exception):
@@ -210,21 +211,21 @@ class AJAXEngine(resource.Resource):
         self.__total_hit = HitCounter()
 
     def render_POST(self, request):
-        path = request.path[len(self.prefix):]
+        path = request.path[len(self.prefix):].decode('utf-8')
         if path[0] == "/":
             handler = self.COMMANDS.get(path[1:])
             if handler is not None:
                 try:
-                    return handler(self, request)
+                    return bytes(handler(self, request), 'utf-8')
                 except AJAXException as e:
-                    return json.dumps((False, e[0]))
+                    return bytes(json.dumps((False, str(e))), 'utf-8')
 
-        return "404"  # TODO: tidy up
+        return b"404"  # TODO: tidy up
 
     def newConnection(self, request):
         ip = request.getClientIP()
 
-        nick = request.args.get("nick")
+        nick = request.args.get(b"nick")
         if not nick:
             raise AJAXException("Nickname not supplied.")
         nick = ircclient.irc_decode(nick[0])
@@ -288,7 +289,7 @@ class AJAXEngine(resource.Resource):
     def getSession(self, request):
         bad_session_message = "Invalid session, this most likely means the server has restarted; close this dialog and then try refreshing the page."
 
-        sessionid = request.args.get("s")
+        sessionid = request.args.get(b"s")
         if sessionid is None:
             raise AJAXException(bad_session_message)
 
@@ -304,7 +305,7 @@ class AJAXEngine(resource.Resource):
         session = self.getSession(request)
         notifier = request.notifyFinish()
 
-        seq_no = request.args.get("n")
+        seq_no = request.args.get(b"n")
         try:
             if seq_no is not None:
                 seq_no = int(seq_no[0])
@@ -327,12 +328,12 @@ class AJAXEngine(resource.Resource):
         return server.NOT_DONE_YET
 
     def push(self, request):
-        command = request.args.get("c")
+        command = request.args.get(b"c")
         if command is None:
             raise AJAXException("No command specified.")
         self.__total_hit()
 
-        seq_no = request.args.get("n")
+        seq_no = request.args.get(b"n")
         try:
             if seq_no is not None:
                 seq_no = int(seq_no[0])
@@ -408,8 +409,8 @@ if has_websocket:
             state = self.__state
             message_type, message = msg[:1], msg[1:]
             if state == self.AWAITING_AUTH:
-                if message_type == "s":    # subscribe
-                    tokens = message.split(",", 1)
+                if message_type == b"s":    # subscribe
+                    tokens = message.split(b",", 1)
                     if len(tokens) != 2:
                         self.close("Bad tokens")
                         return
@@ -422,7 +423,7 @@ if has_websocket:
                     except ValueError:
                         self.close("Bad value")
 
-                    session = Sessions.get(message)
+                    session = Sessions.get(str(message, 'utf-8'))
                     if not session:
                         self.close(BAD_SESSION_MESSAGE)
                         return
@@ -435,8 +436,8 @@ if has_websocket:
                     session.subscribe(self.__channel, seq_no)
                     return
             elif state == self.AUTHED:
-                if message_type == "p":    # push
-                    tokens = message.split(",", 1)
+                if message_type == b"p":    # push
+                    tokens = message.split(b",", 1)
                     if len(tokens) != 2:
                         self.close("Bad tokens")
                         return
@@ -473,7 +474,7 @@ if has_websocket:
                 self.__session = None
 
         def send(self, message_type, message):
-            self.sendMessage(message_type + message)
+            self.sendMessage(bytes(message_type + message, 'utf-8'))
 
     class WebSocketResource(autobahn.twisted.resource.WebSocketResource):
         def render(self, request):

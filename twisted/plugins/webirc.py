@@ -1,4 +1,4 @@
-from zope.interface import implements
+from zope.interface import implementer
 
 from twisted.python import usage
 
@@ -62,7 +62,7 @@ class FlashPolicyFactory(protocol.ServerFactory):
 
     def __init__(self, childProtocol=None):
         import config
-        base_url = urlparse.urlparse(config.BASE_URL)
+        base_url = urlparse(config.BASE_URL)
         port = base_url.port
         if port is None:
             if base_url.scheme == "http":
@@ -75,11 +75,11 @@ class FlashPolicyFactory(protocol.ServerFactory):
         self.childProtocol = childProtocol
         self.response_body = """<cross-domain-policy>
         <allow-access-from domain="%s" to-ports="%d" />
-</cross-domain-policy>""" % (urllib.quote(base_url.hostname), port) + '\0'
+</cross-domain-policy>""" % (urllib.parse.quote(base_url.hostname), port) + '\0'
 
 
+@implementer(IServiceMaker, IPlugin)
 class QWebIRCServiceMaker(object):
-    implements(IServiceMaker, IPlugin)
     tapname = "qwebirc"
     description = "QuakeNet web-based IRC client"
     options = Options

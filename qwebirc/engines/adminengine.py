@@ -1,6 +1,6 @@
 from twisted.web import resource, server
 from cgi import escape
-from urllib import urlencode
+from urllib.parse import urlencode
 import config
 import copy
 import time
@@ -126,4 +126,4 @@ class AdminEngine(resource.Resource):
 
         data.append(FOOTER)
 
-        return "".join(data)
+        return "".join(data).encode('utf-8')
