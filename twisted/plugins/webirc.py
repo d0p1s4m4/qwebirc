@@ -1,4 +1,4 @@
-from zope.interface import implements
+from zope.interface import implementer
 
 from twisted.python import usage
 
@@ -36,8 +36,8 @@ class Options(usage.Options):
                 raise usage.UsageError("SSL support not installed")
 
 
+@implementer(IServiceMaker, IPlugin)
 class QWebIRCServiceMaker(object):
-    implements(IServiceMaker, IPlugin)
     tapname = "qwebirc"
     description = "QuakeNet web-based IRC client"
     options = Options

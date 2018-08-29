@@ -56,7 +56,7 @@ def _getgitid():
     data = p.communicate()[0]
     if p.wait() != 0:
         raise GitException("unable to get id")
-    return re.match("^([0-9a-f]+).*", data.encode('utf-8')).group(1)
+    return re.match("^([0-9a-f]+).*", data.decode('utf-8')).group(1)
 
 
 GITID = None

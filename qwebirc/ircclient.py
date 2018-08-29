@@ -41,16 +41,16 @@ def irc_decode(x):
 
 
 class QWebIRCClient(basic.LineReceiver):
-    delimiter = "\n"
+    delimiter = b'\n'
 
     def __init__(self, *args, **kwargs):
         self.__nickname = "(unregistered)"
 
     def dataReceived(self, data):
-        basic.LineReceiver.dataReceived(self, data.replace("\r", ""))
+        basic.LineReceiver.dataReceived(self, data.replace(b"\r", b""))
 
     def lineReceived(self, line):
-        line = irc_decode(irc.lowDequote(line))
+        line = irc.lowDequote(irc_decode(line))
 
         try:
             prefix, command, params = irc.parsemsg(line)
@@ -79,7 +79,7 @@ class QWebIRCClient(basic.LineReceiver):
         self.factory.publisher.event(args)
 
     def write(self, data):
-        self.transport.write("%s\r\n" % irc.lowQuote(data.encode("utf-8")))
+        self.transport.write(bytes("%s\r\n" % irc.lowQuote(data), 'utf-8'))
 
     def connectionMade(self):
         basic.LineReceiver.connectionMade(self)

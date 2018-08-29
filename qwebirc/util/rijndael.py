@@ -215,8 +215,8 @@ class rijndael:
                 # copy user material bytes into temporary ints
                 tk = []
                 for i in range(0, KC):
-                        tk.append((ord(key[i * 4]) << 24) | (ord(key[i * 4 + 1]) << 16) |
-                                (ord(key[i * 4 + 2]) << 8) | ord(key[i * 4 + 3]))
+                        tk.append((key[i * 4] << 24) | (key[i * 4 + 1] << 16) |
+                                (key[i * 4 + 2] << 8) | key[i * 4 + 3])
 
                 # copy values into round key arrays
                 t = 0

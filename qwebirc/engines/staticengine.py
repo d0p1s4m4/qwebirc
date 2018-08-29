@@ -1,4 +1,4 @@
-from twisted.web import static, error
+from twisted.web import static, resource
 import qwebirc.util as util
 # TODO: fix GZIP
 #  from adminengine import AdminEngineAction
@@ -44,4 +44,4 @@ class StaticEngine(static.File):
         }
 
     def directoryListing(self):
-        return error.ForbiddenResource()
+        return resource.ForbiddenResource()

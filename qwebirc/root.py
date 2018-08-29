@@ -8,8 +8,8 @@ import re
 
 class RootResource(resource.Resource):
     def getChild(self, name, request):
-        if name == "":
-            name = "qui.html"
+        if name == b"":
+            name = b"qui.html"
         return self.primaryChild.getChild(name, request)
 
 
@@ -81,7 +81,7 @@ class RootSite(server.Site):
         def register(service, path, *args, **kwargs):
             sobj = service("/" + path, *args, **kwargs)
             services[service.__name__] = sobj
-            root.putChild(path, sobj)
+            root.putChild(bytes(path, 'utf-8'), sobj)
 
         register(engines.AJAXEngine, "e")
         try:
