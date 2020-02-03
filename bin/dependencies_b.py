@@ -12,7 +12,7 @@ def fail(*message):
 
 
 def warn(*message):
-    print >>sys.stderr, "warning:", "\nwarning: ".join(message), "\n"
+    print("warning: " + "\nwarning: ".join(message) + "\n", file=sys.stderr)
 
 
 def check_dependencies():
