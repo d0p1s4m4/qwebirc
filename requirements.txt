@@ -6,7 +6,7 @@ hyperlink==18.0.0
 idna==2.7
 incremental==17.5.0
 PyHamcrest==1.9.0
-simplejson==3.16.0
+simplejson==3.17.2
 six==1.11.0
 Twisted==18.7.0
 txaio==18.7.1
