@@ -10,4 +10,4 @@ simplejson==3.16.0
 six==1.11.0
 Twisted==18.7.0
 txaio==18.7.1
-zope.interface==4.5.0
+zope.interface==5.2.0
